@@ -69,7 +69,7 @@ button:disabled{opacity:.6;cursor:wait}
   <div class="info">
     <p class="date">6 ноября 2026 года, 14:30–17:30</p>
     <p><b>Место:</b> ресурсный центр СШ № 204, г. Минск, ул. Я. Чечота, 18</p>
-    <p class="seats" id="seatsBox" style="display:none">🪑 Свободных мест: <b id="seatsLeft">15</b> из 15</p>
+    <p class="seats" id="seatsBox">🪑 Свободных мест: <b id="seatsLeft">…</b> из <span id="seatsTotal">15</span></p>
   </div>
 </header>
 
@@ -182,28 +182,34 @@ function jsonp(url, timeout) {
   return new Promise((resolve, reject) => {
     const cb = '__jp' + Date.now().toString(36) + Math.random().toString(36).slice(2);
     const s = document.createElement('script');
-    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, timeout || 10000);
-    function cleanup() { clearTimeout(timer); delete window[cb]; s.remove(); }
-    window[cb] = d => { cleanup(); resolve(d); };
-    s.onerror = () => { cleanup(); reject(new Error('network')); };
+    let done = false;
+    const timer = setTimeout(() => {
+      if (!done) { done = true; cleanup(); reject(new Error('timeout')); }
+    }, timeout || 20000);
+    function cleanup() { clearTimeout(timer); window[cb] = () => {}; s.remove(); }
+    window[cb] = d => { if (!done) { done = true; cleanup(); resolve(d); } };
+    s.onerror = () => { if (!done) { done = true; cleanup(); reject(new Error('network')); } };
     s.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + cb;
     document.head.appendChild(s);
   });
 }
 
-async function loadCounter() {
+async function loadCounter(attempt) {
+  attempt = attempt || 1;
+  $('seatsBox').style.display = 'block';
+  $('seatsTotal').textContent = CONFIG.seats;
   try {
     const url = CONFIG.scriptUrl + '?action=count&sheet=' + encodeURIComponent(CONFIG.sheetName) + '&_ts=' + Date.now();
-    const d = await jsonp(url);
+    const d = await jsonp(url, 20000);
     const left = Math.max(0, CONFIG.seats - (Number(d && d.taken) || 0));
     counterOk = true;
     seatsFull = left <= 0;
     $('seatsLeft').textContent = left;
-    $('seatsBox').style.display = 'block';
   } catch (err) {
-    // Счётчик недоступен — форма всё равно работает, лимит проверит сервер
+    // Скрипт Google мог «проснуться» не успеть — пробуем ещё раз (до 3 попыток)
+    if (attempt < 3) { setTimeout(() => loadCounter(attempt + 1), attempt * 3000); return; }
     counterOk = false;
-    $('seatsBox').style.display = 'none';
+    $('seatsBox').style.display = 'none'; // лимит в любом случае проверит сервер
   }
   $('reserveBanner').style.display = seatsFull ? 'block' : 'none';
   $('send').textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
