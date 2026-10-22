@@ -159,20 +159,17 @@ button:disabled{opacity:.6;cursor:wait}
    ================================================================ */
 const CONFIG = {
   // Ссылка универсального веб-приложения Google (одна на все формы)
-  scriptUrl: 'https://script.google.com/macros/s/AKfycbxQQN_-asVqkxfXqmpd175V8AfJOPmchUyb8FDv0gxyfCCGBSau5V9nQRWwEa3FFXPeQg/exec',
+  scriptUrl: 'https://script.google.com/macros/s/AKfycbzbChRKhj5hlQtmZ9mTSaI41gTzZ6a7mZEwvmv07nIaX-mqX0DYWtyb8lOial02Y4EQRA/exec',
 
-  // Вкладка в Google-таблице для заявок этой формы (создаётся автоматически)
-  sheetName: 'Кухня-квартирник — 06.11.2026',
+  // Постоянный ID события. Лимит и название вкладки определяет Apps Script.
+  eventId: 'kuhnya-2026-11-06',
 
-  // Всего мест вместе с сопровождающими
+  // Используется только для первоначального отображения до ответа сервера.
   seats: 15,
 
   eventPlace: 'ресурсный центр СШ № 204, г. Минск, ул. Я. Чечота, 18',
   eventDate: '06.11.2026, 14:30–17:30'
 };
-
-/* Колонки таблицы («Дата отправки» и «Статус» скрипт добавит сам) */
-const COLUMNS = ['ФИО участника','Участник','Уточнение','Возраст','Диагноз','СУЗ','Место','Дата мероприятия'];
 
 /* Варианты ответа «Форму заполняет» */
 const WHO_CHILD  = 'Ребёнок с особенностями развития';
@@ -182,7 +179,6 @@ const WHO_SIB    = 'Брат или сестра ребёнка';
 /* Тексты экрана «Спасибо» */
 const DONE_OK      = 'Вы зарегистрированы! Ждём вас 6 ноября в 14:30 в ресурсном центре СШ № 204 (г. Минск, ул. Я. Чечота, 18).';
 const DONE_RESERVE = 'Все места заняты — вы записаны в РЕЗЕРВ. Если место освободится, мы обязательно с вами свяжемся.';
-const DONE_UNKNOWN = 'Ваша заявка принята. Ждём вас 6 ноября в 14:30 в ресурсном центре СШ № 204 (г. Минск, ул. Я. Чечота, 18).';
 
 /* ================================================================ */
 
@@ -192,14 +188,13 @@ const mark = (k, bad) => document.querySelector('[data-f="'+k+'"]').classList.to
 const words = s => s.trim().split(/\s+/).filter(Boolean);
 const nameOk = s => /^[\p{L}\-'’.\s№]+$/u.test(s);
 
-/* --- счётчик мест (JSONP + кэш в браузере) --- */
-let counterOk = false;    // есть ли хоть какое-то значение мест
-let seatsFull = false;    // мест нет → режим резерва
-let counterCycle = 0;     // счётчик циклов (для ручного «обновить»)
-let submitting = false;   // прямо сейчас отправляется заявка — счётчик не мешает
-const RETRY_DELAYS = [0, 4000, 10000, 20000, 40000, 60000]; // мягкий график, ~2,5 мин
-const CACHE_KEY = 'seats_' + CONFIG.sheetName;
-const CACHE_TTL = 10 * 60 * 1000; // кэш считаем свежим 10 минут
+/* --- счётчик мест: сервер — единственный источник правды --- */
+let seatsFull = false;
+let counterCycle = 0;
+let submitting = false;
+const RETRY_DELAYS = [0, 5000, 20000];
+const CACHE_KEY = 'seats_' + CONFIG.eventId;
+const CACHE_TTL = 60 * 1000; // кэш — только запасной вариант, не дольше минуты
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function cacheGet() {
@@ -209,27 +204,26 @@ function cacheGet() {
   } catch (_) { return null; }
 }
 function cachePut(left) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ left: left, t: Date.now() })); } catch (_) {}
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ left, t: Date.now() })); } catch (_) {}
 }
 
-function jsonp(url, timeout) {
-  return new Promise((resolve, reject) => {
-    const cb = '__jp' + Date.now().toString(36) + Math.random().toString(36).slice(2);
-    const s = document.createElement('script');
-    let done = false;
-    const timer = setTimeout(() => {
-      if (!done) { done = true; cleanup(); reject(new Error('timeout')); }
-    }, timeout || 15000);
-    function cleanup() { clearTimeout(timer); window[cb] = () => {}; s.remove(); }
-    window[cb] = d => { if (!done) { done = true; cleanup(); resolve(d); } };
-    s.onerror = () => { if (!done) { done = true; cleanup(); reject(new Error('network')); } };
-    s.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + cb;
-    document.head.appendChild(s);
-  });
+async function getJson(url, timeout = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function applyLeft(left) {
-  counterOk = true;
   seatsFull = left <= 0;
   $('seatsLeft').textContent = left;
   renderSeatsState();
@@ -241,43 +235,61 @@ function renderSeatsState() {
 }
 
 async function loadCounter() {
+  if (submitting) return;
+
   const cycle = ++counterCycle;
-  $('seatsBox').style.display = 'block';
-  $('seatsBox').classList.remove('clickable');
+  const box = $('seatsBox');
+  box.style.display = 'block';
+  box.classList.remove('clickable');
+  box.removeAttribute('title');
   $('seatsTotal').textContent = CONFIG.seats;
 
-  // 1) Мгновенно показываем недавний кэш (если есть), иначе «…»
+  // Сразу показываем недавнее значение, но затем обязательно спрашиваем сервер.
   const cached = cacheGet();
   if (cached) applyLeft(cached.left);
   else $('seatsLeft').textContent = '…';
 
-  // 2) Проверяем актуальное значение на сервере (с мягкими повторами)
   for (let i = 0; i < RETRY_DELAYS.length; i++) {
     if (i) await sleep(RETRY_DELAYS[i]);
-    if (cycle !== counterCycle) return;
-    while (submitting) { await sleep(500); if (cycle !== counterCycle) return; }
+    if (cycle !== counterCycle || submitting) return;
+
     try {
-      const url = CONFIG.scriptUrl + '?action=count&sheet=' + encodeURIComponent(CONFIG.sheetName) + '&_ts=' + Date.now();
-      const d = await jsonp(url, 15000);
+      const url = new URL(CONFIG.scriptUrl);
+      url.searchParams.set('action', 'count');
+      url.searchParams.set('event', CONFIG.eventId);
+      url.searchParams.set('_ts', String(Date.now()));
+
+      const data = await getJson(url.toString());
       if (cycle !== counterCycle) return;
-      const left = Math.max(0, CONFIG.seats - (Number(d && d.taken) || 0));
+      if (data.result !== 'ok' || !Number.isFinite(Number(data.available))) {
+        throw new Error('Некорректный ответ счётчика');
+      }
+
+      const capacity = Number(data.capacity);
+      const left = Math.max(0, Number(data.available));
+      if (Number.isFinite(capacity) && capacity > 0) {
+        $('seatsTotal').textContent = capacity;
+      }
       cachePut(left);
       applyLeft(left);
       return;
-    } catch (err) { /* Google иногда «тормозит» — пробуем снова */ }
+    } catch (err) {
+      console.warn('Не удалось обновить счётчик:', err);
+    }
   }
-  if (cycle !== counterCycle) return;
 
-  // 3) Сервер так и не ответил: кэш уже показан (если был) — делаем бейдж
-  //    кликабельным для ручной проверки. Лимит мест в любом случае на сервере.
+  if (cycle !== counterCycle) return;
   if (!cached) $('seatsLeft').textContent = 'обновить ↻';
-  $('seatsBox').classList.add('clickable');
-  $('seatsBox').title = 'Нажмите, чтобы обновить счётчик';
+  box.classList.add('clickable');
+  box.title = 'Нажмите, чтобы обновить счётчик';
 }
 
 $('seatsBox').addEventListener('click', () => {
   if ($('seatsBox').classList.contains('clickable') && !submitting) loadCounter();
 });
+window.addEventListener('focus', loadCounter);
+window.addEventListener('online', loadCounter);
+setInterval(loadCounter, 60000);
 loadCounter();
 
 /* --- показ дополнительных блоков --- */
@@ -319,9 +331,7 @@ $('form').addEventListener('submit', async e => {
 
   const utoch = isParent ? radio('pwho') : (isSib ? radio('swho') : '—');
   const payload = {
-    _sheet: CONFIG.sheetName,
-    _columns: COLUMNS,
-    _seats: CONFIG.seats,
+    _event: CONFIG.eventId,
     'ФИО участника': fio,
     'Участник': who,
     'Уточнение': utoch,
@@ -330,19 +340,34 @@ $('form').addEventListener('submit', async e => {
     'СУЗ': isChild ? suz : '—',
     'Место': CONFIG.eventPlace,
     'Дата мероприятия': CONFIG.eventDate,
-    website: $('website').value  // ловушка для ботов — всегда последней
+    website: $('website').value
   };
 
-  const wasFull = seatsFull; // помним состояние мест на момент отправки
   submitting = true;
   try {
     if (!/\/exec$/.test(CONFIG.scriptUrl)) throw new Error('Не указана ссылка на веб-приложение');
-    await fetch(CONFIG.scriptUrl, {
-      method: 'POST', mode: 'no-cors',
+
+    // Не используем no-cors: нужен настоящий ответ сервера о регистрации
+    // или резерве. Content-Type text/plain не вызывает preflight-запрос.
+    const response = await fetch(CONFIG.scriptUrl, {
+      method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
-    $('doneText').textContent = !counterOk ? DONE_UNKNOWN : (wasFull ? DONE_RESERVE : DONE_OK);
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+    const result = await response.json();
+    if (result.result !== 'ok' || !result.status) {
+      throw new Error(result.message || 'Сервер не подтвердил заявку');
+    }
+
+    // Статус определяется сервером под блокировкой, а не старым счётчиком.
+    if (Number.isFinite(Number(result.available))) {
+      $('seatsTotal').textContent = Number(result.capacity) || CONFIG.seats;
+      cachePut(Math.max(0, Number(result.available)));
+      applyLeft(Math.max(0, Number(result.available)));
+    }
+    $('doneText').textContent = result.status === 'резерв' ? DONE_RESERVE : DONE_OK;
     $('form').style.display = 'none'; $('done').style.display = 'block';
     $('done').scrollIntoView({block:'center'});
   } catch (err) {
@@ -359,5 +384,5 @@ $('form').addEventListener('submit', async e => {
 /* --- «Заполнить ещё на одного участника» --- */
 $('again').addEventListener('click', () => location.reload());
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4eb126b3d0d1e30',t:'MTc5MjY5OTA1NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
