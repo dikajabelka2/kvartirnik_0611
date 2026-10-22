@@ -192,11 +192,25 @@ const mark = (k, bad) => document.querySelector('[data-f="'+k+'"]').classList.to
 const words = s => s.trim().split(/\s+/).filter(Boolean);
 const nameOk = s => /^[\p{L}\-'’.\s№]+$/u.test(s);
 
-/* --- счётчик мест (JSONP-запрос к веб-приложению Google) --- */
-let counterOk = false;    // удалось ли узнать число занятых мест
+/* --- счётчик мест (JSONP + кэш в браузере) --- */
+let counterOk = false;    // есть ли хоть какое-то значение мест
 let seatsFull = false;    // мест нет → режим резерва
 let counterCycle = 0;     // счётчик циклов (для ручного «обновить»)
-const RETRY_DELAYS = [0, 3000, 6000, 10000, 15000, 20000, 30000, 30000, 30000, 30000];
+let submitting = false;   // прямо сейчас отправляется заявка — счётчик не мешает
+const RETRY_DELAYS = [0, 4000, 10000, 20000, 40000, 60000]; // мягкий график, ~2,5 мин
+const CACHE_KEY = 'seats_' + CONFIG.sheetName;
+const CACHE_TTL = 10 * 60 * 1000; // кэш считаем свежим 10 минут
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function cacheGet() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CACHE_KEY));
+    return d && Date.now() - d.t < CACHE_TTL ? d : null;
+  } catch (_) { return null; }
+}
+function cachePut(left) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ left: left, t: Date.now() })); } catch (_) {}
+}
 
 function jsonp(url, timeout) {
   return new Promise((resolve, reject) => {
@@ -205,13 +219,20 @@ function jsonp(url, timeout) {
     let done = false;
     const timer = setTimeout(() => {
       if (!done) { done = true; cleanup(); reject(new Error('timeout')); }
-    }, timeout || 20000);
+    }, timeout || 15000);
     function cleanup() { clearTimeout(timer); window[cb] = () => {}; s.remove(); }
     window[cb] = d => { if (!done) { done = true; cleanup(); resolve(d); } };
     s.onerror = () => { if (!done) { done = true; cleanup(); reject(new Error('network')); } };
     s.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + cb;
     document.head.appendChild(s);
   });
+}
+
+function applyLeft(left) {
+  counterOk = true;
+  seatsFull = left <= 0;
+  $('seatsLeft').textContent = left;
+  renderSeatsState();
 }
 
 function renderSeatsState() {
@@ -224,32 +245,39 @@ async function loadCounter() {
   $('seatsBox').style.display = 'block';
   $('seatsBox').classList.remove('clickable');
   $('seatsTotal').textContent = CONFIG.seats;
-  $('seatsLeft').textContent = '…';
+
+  // 1) Мгновенно показываем недавний кэш (если есть), иначе «…»
+  const cached = cacheGet();
+  if (cached) applyLeft(cached.left);
+  else $('seatsLeft').textContent = '…';
+
+  // 2) Проверяем актуальное значение на сервере (с мягкими повторами)
   for (let i = 0; i < RETRY_DELAYS.length; i++) {
-    if (i) await new Promise(r => setTimeout(r, RETRY_DELAYS[i]));
-    if (cycle !== counterCycle) return; // запущен новый цикл — выходим
+    if (i) await sleep(RETRY_DELAYS[i]);
+    if (cycle !== counterCycle) return;
+    while (submitting) { await sleep(500); if (cycle !== counterCycle) return; }
     try {
       const url = CONFIG.scriptUrl + '?action=count&sheet=' + encodeURIComponent(CONFIG.sheetName) + '&_ts=' + Date.now();
-      const d = await jsonp(url, 20000);
+      const d = await jsonp(url, 15000);
       if (cycle !== counterCycle) return;
       const left = Math.max(0, CONFIG.seats - (Number(d && d.taken) || 0));
-      counterOk = true;
-      seatsFull = left <= 0;
-      $('seatsLeft').textContent = left;
-      renderSeatsState();
+      cachePut(left);
+      applyLeft(left);
       return;
-    } catch (err) { /* Google иногда отдаёт временную ошибку — пробуем снова */ }
+    } catch (err) { /* Google иногда «тормозит» — пробуем снова */ }
   }
   if (cycle !== counterCycle) return;
-  // Все попытки исчерпаны: предлагаем обновить вручную.
-  // Лимит мест в любом случае контролирует сервер при отправке.
-  counterOk = false;
-  $('seatsLeft').textContent = 'обновить ↻';
+
+  // 3) Сервер так и не ответил: кэш уже показан (если был) — делаем бейдж
+  //    кликабельным для ручной проверки. Лимит мест в любом случае на сервере.
+  if (!cached) $('seatsLeft').textContent = 'обновить ↻';
   $('seatsBox').classList.add('clickable');
   $('seatsBox').title = 'Нажмите, чтобы обновить счётчик';
 }
 
-$('seatsBox').addEventListener('click', () => { if (!counterOk) loadCounter(); });
+$('seatsBox').addEventListener('click', () => {
+  if ($('seatsBox').classList.contains('clickable') && !submitting) loadCounter();
+});
 loadCounter();
 
 /* --- показ дополнительных блоков --- */
@@ -284,6 +312,10 @@ $('form').addEventListener('submit', async e => {
   if (first) { document.querySelector('[data-f="'+first+'"]').scrollIntoView({block:'center'}); return; }
 
   const btn = $('send'); btn.disabled = true; btn.textContent = 'Отправляем…'; $('fail').style.display = 'none';
+  // Google иногда отвечает медленно — через 10 с подсказываем, что всё идёт по плану
+  const slowTimer = setTimeout(() => {
+    if (submitting) btn.textContent = 'Отправляем… Google отвечает медленно, подождите ещё немного';
+  }, 10000);
 
   const utoch = isParent ? radio('pwho') : (isSib ? radio('swho') : '—');
   const payload = {
@@ -302,6 +334,7 @@ $('form').addEventListener('submit', async e => {
   };
 
   const wasFull = seatsFull; // помним состояние мест на момент отправки
+  submitting = true;
   try {
     if (!/\/exec$/.test(CONFIG.scriptUrl)) throw new Error('Не указана ссылка на веб-приложение');
     await fetch(CONFIG.scriptUrl, {
@@ -317,6 +350,9 @@ $('form').addEventListener('submit', async e => {
     $('fail').style.display = 'block';
     btn.disabled = false;
     btn.textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
+  } finally {
+    submitting = false;
+    clearTimeout(slowTimer);
   }
 });
 
