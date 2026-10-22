@@ -22,10 +22,6 @@ h1{font:700 clamp(30px,6vw,46px)/1.12 "Cormorant Garamond",Georgia,serif;color:v
 .info p{margin:0}.info p+p{margin-top:10px}
 .info b{color:var(--plum)}
 .info .date{font:700 28px/1.2 "Cormorant Garamond",Georgia,serif;color:var(--plum);text-align:center;padding-bottom:12px;margin-bottom:2px;border-bottom:1.5px solid var(--gold)}
-.seats{margin-top:12px!important;text-align:center;font-weight:700;color:var(--plum);background:#fff;border:1.5px solid var(--gold);border-radius:999px;padding:8px 16px}
-.seats b{font-size:20px}
-.seats.clickable{cursor:pointer}
-.seats.clickable b{font-size:16px;text-decoration:underline dotted}
 main{max-width:620px;margin:-40px auto 60px;padding:0 16px}
 form{background:#fff;border-radius:22px;padding:30px 24px 26px;box-shadow:0 12px 40px rgba(93,44,112,.14)}
 h2{font:700 26px "Cormorant Garamond",Georgia,serif;color:var(--plum);margin:0 0 20px}
@@ -48,7 +44,6 @@ input:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline
 .notes{background:#FFF4DC;border:2px solid var(--gold);border-radius:16px;padding:16px 20px;margin:4px 0 22px}
 .notes h3{font:700 22px "Cormorant Garamond",Georgia,serif;color:var(--plum);margin:0 0 8px}
 .notes ul{margin:0;padding-left:20px}.notes li+li{margin-top:6px}
-.reserve{display:none;background:#FFF4DC;border:2px solid var(--gold);border-radius:16px;padding:14px 18px;margin:0 0 18px;font-weight:600}
 button{width:100%;font:700 18px Manrope,sans-serif;color:#fff;background:var(--plum);border:0;border-radius:14px;padding:16px;cursor:pointer;margin-top:6px}
 button:hover{background:#4b2359}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
@@ -72,15 +67,12 @@ button:disabled{opacity:.6;cursor:wait}
   <div class="info">
     <p class="date">6 ноября 2026 года, 14:30–17:30</p>
     <p><b>Место:</b> ресурсный центр СШ № 204, г. Минск, ул. Я. Чечота, 18</p>
-    <p class="seats" id="seatsBox">🪑 Свободных мест: <b id="seatsLeft">…</b> из <span id="seatsTotal">15</span></p>
   </div>
 </header>
 
 <main>
 <form id="form" novalidate>
   <h2>Форма участия</h2>
-
-  <div class="reserve" id="reserveBanner">Мест больше нет, но можно записаться <b>в резерв</b>. Если место освободится — мы обязательно вам сообщим.</div>
 
   <div class="f" data-f="fio"><label for="fio">ФИО участника</label>
     <input type="text" id="fio" autocomplete="name" placeholder="Иванова Мария Ивановна">
@@ -164,9 +156,6 @@ const CONFIG = {
   // Постоянный ID события. Лимит и название вкладки определяет Apps Script.
   eventId: 'kuhnya-2026-11-06',
 
-  // Используется только для первоначального отображения до ответа сервера.
-  seats: 15,
-
   eventPlace: 'ресурсный центр СШ № 204, г. Минск, ул. Я. Чечота, 18',
   eventDate: '06.11.2026, 14:30–17:30'
 };
@@ -187,110 +176,7 @@ const radio = n => (document.querySelector('input[name="'+n+'"]:checked')||{}).v
 const mark = (k, bad) => document.querySelector('[data-f="'+k+'"]').classList.toggle('bad', bad);
 const words = s => s.trim().split(/\s+/).filter(Boolean);
 const nameOk = s => /^[\p{L}\-'’.\s№]+$/u.test(s);
-
-/* --- счётчик мест: сервер — единственный источник правды --- */
-let seatsFull = false;
-let counterCycle = 0;
 let submitting = false;
-const RETRY_DELAYS = [0, 5000, 20000];
-const CACHE_KEY = 'seats_' + CONFIG.eventId;
-const CACHE_TTL = 60 * 1000; // кэш — только запасной вариант, не дольше минуты
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-function cacheGet() {
-  try {
-    const d = JSON.parse(localStorage.getItem(CACHE_KEY));
-    return d && Date.now() - d.t < CACHE_TTL ? d : null;
-  } catch (_) { return null; }
-}
-function cachePut(left) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ left, t: Date.now() })); } catch (_) {}
-}
-
-async function getJson(url, timeout = 8000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function applyLeft(left) {
-  seatsFull = left <= 0;
-  $('seatsLeft').textContent = left;
-  renderSeatsState();
-}
-
-function renderSeatsState() {
-  $('reserveBanner').style.display = seatsFull ? 'block' : 'none';
-  $('send').textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
-}
-
-async function loadCounter() {
-  if (submitting) return;
-
-  const cycle = ++counterCycle;
-  const box = $('seatsBox');
-  box.style.display = 'block';
-  box.classList.remove('clickable');
-  box.removeAttribute('title');
-  $('seatsTotal').textContent = CONFIG.seats;
-
-  // Сразу показываем недавнее значение, но затем обязательно спрашиваем сервер.
-  const cached = cacheGet();
-  if (cached) applyLeft(cached.left);
-  else $('seatsLeft').textContent = '…';
-
-  for (let i = 0; i < RETRY_DELAYS.length; i++) {
-    if (i) await sleep(RETRY_DELAYS[i]);
-    if (cycle !== counterCycle || submitting) return;
-
-    try {
-      const url = new URL(CONFIG.scriptUrl);
-      url.searchParams.set('action', 'count');
-      url.searchParams.set('event', CONFIG.eventId);
-      url.searchParams.set('_ts', String(Date.now()));
-
-      const data = await getJson(url.toString());
-      if (cycle !== counterCycle) return;
-      if (data.result !== 'ok' || !Number.isFinite(Number(data.available))) {
-        throw new Error('Некорректный ответ счётчика');
-      }
-
-      const capacity = Number(data.capacity);
-      const left = Math.max(0, Number(data.available));
-      if (Number.isFinite(capacity) && capacity > 0) {
-        $('seatsTotal').textContent = capacity;
-      }
-      cachePut(left);
-      applyLeft(left);
-      return;
-    } catch (err) {
-      console.warn('Не удалось обновить счётчик:', err);
-    }
-  }
-
-  if (cycle !== counterCycle) return;
-  if (!cached) $('seatsLeft').textContent = 'обновить ↻';
-  box.classList.add('clickable');
-  box.title = 'Нажмите, чтобы обновить счётчик';
-}
-
-$('seatsBox').addEventListener('click', () => {
-  if ($('seatsBox').classList.contains('clickable') && !submitting) loadCounter();
-});
-window.addEventListener('focus', loadCounter);
-window.addEventListener('online', loadCounter);
-setInterval(loadCounter, 60000);
-loadCounter();
 
 /* --- показ дополнительных блоков --- */
 document.addEventListener('change', () => {
@@ -361,12 +247,7 @@ $('form').addEventListener('submit', async e => {
       throw new Error(result.message || 'Сервер не подтвердил заявку');
     }
 
-    // Статус определяется сервером под блокировкой, а не старым счётчиком.
-    if (Number.isFinite(Number(result.available))) {
-      $('seatsTotal').textContent = Number(result.capacity) || CONFIG.seats;
-      cachePut(Math.max(0, Number(result.available)));
-      applyLeft(Math.max(0, Number(result.available)));
-    }
+    // Сервер под блокировкой определяет, зарегистрирован участник или в резерве.
     $('doneText').textContent = result.status === 'резерв' ? DONE_RESERVE : DONE_OK;
     $('form').style.display = 'none'; $('done').style.display = 'block';
     $('done').scrollIntoView({block:'center'});
@@ -374,7 +255,7 @@ $('form').addEventListener('submit', async e => {
     console.error(err);
     $('fail').style.display = 'block';
     btn.disabled = false;
-    btn.textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
+    btn.textContent = 'Отправить заявку';
   } finally {
     submitting = false;
     clearTimeout(slowTimer);
@@ -384,5 +265,5 @@ $('form').addEventListener('submit', async e => {
 /* --- «Заполнить ещё на одного участника» --- */
 $('again').addEventListener('click', () => location.reload());
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4eb126b3d0d1e30',t:'MTc5MjY5OTA1NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4eb1d1f59341e30',t:'MTc5MjY5OTQ5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
