@@ -39,6 +39,7 @@ input:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline
 .sub{margin:2px 0 10px;display:none}.sub.on{display:block}
 .sub .f:last-child,.sub fieldset:last-child{margin-bottom:8px}
 .hint{font-size:14px;color:#7a6580;margin-top:5px}
+.hint.big{font-size:16px;font-weight:700;color:var(--plum);margin-top:8px}
 .err{color:var(--err);font-size:14px;margin-top:5px;display:none}
 .bad .err{display:block}.bad input[type=text],.bad input[type=number],.bad textarea{border-color:var(--err)}
 .hp{position:absolute;left:-9999px}
@@ -81,28 +82,19 @@ button:disabled{opacity:.6;cursor:wait}
 
   <div class="f" data-f="fio"><label for="fio">ФИО участника</label>
     <input type="text" id="fio" autocomplete="name" placeholder="Иванова Мария Ивановна">
-    <div class="hint">Полностью, в таком порядке: Фамилия, Имя, Отчество. Один участник — одна форма.</div>
+    <div class="hint big">Фамилия Имя Отчество — именно в таком порядке</div>
+    <div class="hint">Один участник — одна форма: и ребёнок, и каждый сопровождающий заполняют отдельно.</div>
     <div class="err">Укажите фамилию, имя и отчество полностью, через пробел</div></div>
 
-  <fieldset data-f="rod"><legend>Кем приходится ребёнку с инвалидностью</legend>
-    <label class="opt"><input type="radio" name="rod" value="Мама"> Мама</label>
-    <label class="opt"><input type="radio" name="rod" value="Папа"> Папа</label>
-    <label class="opt"><input type="radio" name="rod" value="Брат"> Брат</label>
-    <label class="opt"><input type="radio" name="rod" value="Сестра"> Сестра</label>
-    <label class="opt"><input type="radio" name="rod" value="Другое"> Другое</label>
-    <div class="sub" id="rodSub"><input type="text" id="rodOther" placeholder="Уточните (например: бабушка, сам ребёнок)" aria-label="Родство — другое"></div>
-    <div class="err">Выберите вариант (для «Другое» — заполните уточнение)</div></fieldset>
+  <fieldset data-f="who"><legend>Форму заполняет:</legend>
+    <label class="opt"><input type="radio" name="who" value="Ребёнок с особенностями развития"> Ребёнок с особенностями развития</label>
+    <label class="opt"><input type="radio" name="who" value="Родитель ребёнка"> Родитель ребёнка</label>
+    <label class="opt"><input type="radio" name="who" value="Брат или сестра ребёнка"> Брат или сестра ребёнка</label>
+    <div class="err">Выберите вариант</div>
 
-  <div class="f" data-f="age"><label for="age">Возраст</label>
-    <input type="number" id="age" inputmode="numeric" min="0" max="100" step="1" placeholder="Полных лет">
-    <div class="err">Укажите возраст числом от 0 до 100</div></div>
-
-  <fieldset data-f="diagyn"><legend>Диагноз</legend>
-    <label class="opt"><input type="radio" name="diagyn" value="Есть"> Есть</label>
-    <label class="opt"><input type="radio" name="diagyn" value="Нет"> Нет</label>
-    <div class="err">Выберите «Есть» или «Нет»</div>
-    <div class="sub" id="diagBlock">
-      <div class="f" data-f="diag"><label for="diag">Укажите диагноз</label>
+    <!-- Раскрывается для «Ребёнок с особенностями развития» -->
+    <div class="sub" id="subChild">
+      <div class="f" data-f="diag"><label for="diag">Диагноз</label>
         <textarea id="diag" placeholder="Напишите диагноз"></textarea>
         <div class="err">Укажите диагноз</div></div>
       <fieldset data-f="suz"><legend>СУЗ</legend>
@@ -112,7 +104,27 @@ button:disabled{opacity:.6;cursor:wait}
         <label class="opt"><input type="radio" name="suz" value="СУЗ 4"> СУЗ 4</label>
         <div class="err">Выберите СУЗ</div></fieldset>
     </div>
+
+    <!-- Раскрывается для «Родитель ребёнка» -->
+    <div class="sub" id="subParent">
+      <fieldset data-f="pwho"><legend>Вы — мама или папа?</legend>
+        <label class="opt"><input type="radio" name="pwho" value="Мама"> Мама</label>
+        <label class="opt"><input type="radio" name="pwho" value="Папа"> Папа</label>
+        <div class="err">Выберите вариант</div></fieldset>
+    </div>
+
+    <!-- Раскрывается для «Брат или сестра ребёнка» -->
+    <div class="sub" id="subSib">
+      <fieldset data-f="swho"><legend>Вы — брат или сестра?</legend>
+        <label class="opt"><input type="radio" name="swho" value="Брат"> Брат</label>
+        <label class="opt"><input type="radio" name="swho" value="Сестра"> Сестра</label>
+        <div class="err">Выберите вариант</div></fieldset>
+    </div>
   </fieldset>
+
+  <div class="f" data-f="age"><label for="age">Возраст</label>
+    <input type="number" id="age" inputmode="numeric" min="0" max="100" step="1" placeholder="Полных лет">
+    <div class="err">Укажите возраст числом от 0 до 100</div></div>
 
   <div class="notes">
     <h3>Важно!</h3>
@@ -144,8 +156,7 @@ button:disabled{opacity:.6;cursor:wait}
    НАСТРОЙКИ ФОРМЫ
    ================================================================ */
 const CONFIG = {
-  // Ссылка универсального веб-приложения Google (одна на все формы,
-  // получается один раз по инструкции SETUP.md; заканчивается на /exec)
+  // Ссылка универсального веб-приложения Google (одна на все формы)
   scriptUrl: 'https://script.google.com/macros/s/AKfycbxQQN_-asVqkxfXqmpd175V8AfJOPmchUyb8FDv0gxyfCCGBSau5V9nQRWwEa3FFXPeQg/exec',
 
   // Вкладка в Google-таблице для заявок этой формы (создаётся автоматически)
@@ -159,7 +170,12 @@ const CONFIG = {
 };
 
 /* Колонки таблицы («Дата отправки» и «Статус» скрипт добавит сам) */
-const COLUMNS = ['ФИО участника','Кем приходится ребёнку','Возраст','Есть ли диагноз','Диагноз','СУЗ','Место','Дата мероприятия'];
+const COLUMNS = ['ФИО участника','Участник','Уточнение','Возраст','Диагноз','СУЗ','Место','Дата мероприятия'];
+
+/* Варианты ответа «Форму заполняет» */
+const WHO_CHILD  = 'Ребёнок с особенностями развития';
+const WHO_PARENT = 'Родитель ребёнка';
+const WHO_SIB    = 'Брат или сестра ребёнка';
 
 /* Тексты экрана «Спасибо» */
 const DONE_OK      = 'Вы зарегистрированы! Ждём вас 6 ноября в 14:30 в ресурсном центре СШ № 204 (г. Минск, ул. Я. Чечота, 18).';
@@ -218,8 +234,10 @@ loadCounter();
 
 /* --- показ дополнительных блоков --- */
 document.addEventListener('change', () => {
-  $('rodSub').classList.toggle('on', radio('rod') === 'Другое');
-  $('diagBlock').classList.toggle('on', radio('diagyn') === 'Есть');
+  const w = radio('who');
+  $('subChild').classList.toggle('on', w === WHO_CHILD);
+  $('subParent').classList.toggle('on', w === WHO_PARENT);
+  $('subSib').classList.toggle('on', w === WHO_SIB);
 });
 
 /* --- отправка --- */
@@ -227,17 +245,18 @@ $('form').addEventListener('submit', async e => {
   e.preventDefault();
   const fio = $('fio').value.trim();
   const age = $('age').value.trim(), ageNum = Number(age);
-  const rod = radio('rod'), rodOther = $('rodOther').value.trim();
-  const diagyn = radio('diagyn');
+  const who = radio('who');
+  const isChild = who === WHO_CHILD, isParent = who === WHO_PARENT, isSib = who === WHO_SIB;
   const diag = $('diag').value.trim(), suz = radio('suz');
 
   const checks = {
     fio: words(fio).length >= 3 && nameOk(fio),
-    rod: !!rod && (rod !== 'Другое' || rodOther.length >= 2),
+    who: !!who,
+    diag: !isChild || diag.length >= 2,
+    suz: !isChild || !!suz,
+    pwho: !isParent || !!radio('pwho'),
+    swho: !isSib || !!radio('swho'),
     age: age !== '' && Number.isInteger(ageNum) && ageNum >= 0 && ageNum <= 100,
-    diagyn: !!diagyn,
-    diag: diagyn !== 'Есть' || diag.length >= 2,
-    suz: diagyn !== 'Есть' || !!suz,
     ok: $('ok').checked
   };
   let first = null;
@@ -246,17 +265,17 @@ $('form').addEventListener('submit', async e => {
 
   const btn = $('send'); btn.disabled = true; btn.textContent = 'Отправляем…'; $('fail').style.display = 'none';
 
-  const diagYes = diagyn === 'Есть';
+  const utoch = isParent ? radio('pwho') : (isSib ? radio('swho') : '—');
   const payload = {
     _sheet: CONFIG.sheetName,
     _columns: COLUMNS,
     _seats: CONFIG.seats,
     'ФИО участника': fio,
-    'Кем приходится ребёнку': rod === 'Другое' ? 'Другое: ' + rodOther : rod,
+    'Участник': who,
+    'Уточнение': utoch,
     'Возраст': age,
-    'Есть ли диагноз': diagYes ? 'Есть' : 'Нет',
-    'Диагноз': diagYes ? diag : 'нет',
-    'СУЗ': diagYes ? suz : 'нет',
+    'Диагноз': isChild ? diag : '—',
+    'СУЗ': isChild ? suz : '—',
     'Место': CONFIG.eventPlace,
     'Дата мероприятия': CONFIG.eventDate,
     website: $('website').value  // ловушка для ботов — всегда последней
