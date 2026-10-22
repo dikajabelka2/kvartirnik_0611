@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Запись на мероприятие в «ИграйПарк» · Для неё</title>
+<title>#кухняквартирник 06.11 · Для неё</title>
 <link rel="icon" href="logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +22,8 @@ h1{font:700 clamp(30px,6vw,46px)/1.12 "Cormorant Garamond",Georgia,serif;color:v
 .info p{margin:0}.info p+p{margin-top:10px}
 .info b{color:var(--plum)}
 .info .date{font:700 28px/1.2 "Cormorant Garamond",Georgia,serif;color:var(--plum);text-align:center;padding-bottom:12px;margin-bottom:2px;border-bottom:1.5px solid var(--gold)}
+.seats{margin-top:12px!important;text-align:center;font-weight:700;color:var(--plum);background:#fff;border:1.5px solid var(--gold);border-radius:999px;padding:8px 16px}
+.seats b{font-size:20px}
 main{max-width:620px;margin:-40px auto 60px;padding:0 16px}
 form{background:#fff;border-radius:22px;padding:30px 24px 26px;box-shadow:0 12px 40px rgba(93,44,112,.14)}
 h2{font:700 26px "Cormorant Garamond",Georgia,serif;color:var(--plum);margin:0 0 20px}
@@ -29,12 +31,13 @@ h2{font:700 26px "Cormorant Garamond",Georgia,serif;color:var(--plum);margin:0 0
 label,legend{display:block;font-weight:700;margin-bottom:6px;padding:0}
 fieldset{border:0;margin:0 0 20px;padding:0}
 input[type=text],input[type=number],textarea{width:100%;font:inherit;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--ivory);color:var(--ink)}
-textarea{min-height:96px;resize:vertical}
+textarea{min-height:70px;resize:vertical}
 input:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline-offset:1px;border-color:var(--plum)}
 .opt{display:flex;align-items:flex-start;gap:11px;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer;font-weight:400}
 .opt:has(input:checked){border-color:var(--plum);background:#F6ECF8}
 .opt input{accent-color:var(--plum);width:20px;height:20px;margin:2px 0 0;flex:none}
-.sub{margin:-2px 0 10px 0;display:none}.sub.on{display:block}
+.sub{margin:2px 0 10px;display:none}.sub.on{display:block}
+.sub .f:last-child,.sub fieldset:last-child{margin-bottom:8px}
 .hint{font-size:14px;color:#7a6580;margin-top:5px}
 .err{color:var(--err);font-size:14px;margin-top:5px;display:none}
 .bad .err{display:block}.bad input[type=text],.bad input[type=number],.bad textarea{border-color:var(--err)}
@@ -42,7 +45,7 @@ input:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline
 .notes{background:#FFF4DC;border:2px solid var(--gold);border-radius:16px;padding:16px 20px;margin:4px 0 22px}
 .notes h3{font:700 22px "Cormorant Garamond",Georgia,serif;color:var(--plum);margin:0 0 8px}
 .notes ul{margin:0;padding-left:20px}.notes li+li{margin-top:6px}
-.notes a{color:var(--plum);font-weight:700}
+.reserve{display:none;background:#FFF4DC;border:2px solid var(--gold);border-radius:16px;padding:14px 18px;margin:0 0 18px;font-weight:600}
 button{width:100%;font:700 18px Manrope,sans-serif;color:#fff;background:var(--plum);border:0;border-radius:14px;padding:16px;cursor:pointer;margin-top:6px}
 button:hover{background:#4b2359}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
@@ -52,17 +55,21 @@ button:disabled{opacity:.6;cursor:wait}
 .done{display:none;background:#fff;border-radius:22px;padding:36px 24px;box-shadow:0 12px 40px rgba(93,44,112,.14);border:2px solid var(--gold)}
 .done h2{font-size:32px;text-align:center}
 .done p{text-align:center}
+.done button{background:#fff;color:var(--plum);border:2px solid var(--plum);margin-top:18px}
+.done button:hover{background:#F6ECF8}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
 <header class="hero">
+  <!-- Положите logo.jpg рядом с этим файлом (или удалите строку ниже) -->
   <img class="logo" src="logo.jpg" alt="Логотип просветительского общественного объединения «Для неё»">
-  <h1>Запись на мероприятие в «ИграйПарк»</h1>
-  <p class="lead">Просим заполнить форму участия. Нам важно подготовиться к встрече с каждой семьёй.</p>
+  <h1>#кухняквартирник<br>«Блинчики с начинками»</h1>
+  <p class="lead">Встреча для детей с особенностями развития и их родителей.</p>
   <div class="info">
-    <p class="date">23 октября 2026 года, 15:00–17:00</p>
-    <p><b>Организатор:</b> ИграйПарк, ул. Свердлова, 11</p>
+    <p class="date">6 ноября 2026 года, 14:30–17:30</p>
+    <p><b>Место:</b> ресурсный центр СШ № 204, г. Минск, ул. Я. Чечота, 18</p>
+    <p class="seats" id="seatsBox" style="display:none">🪑 Свободных мест: <b id="seatsLeft">15</b> из 15</p>
   </div>
 </header>
 
@@ -70,46 +77,51 @@ button:disabled{opacity:.6;cursor:wait}
 <form id="form" novalidate>
   <h2>Форма участия</h2>
 
-  <div class="f" data-f="mom"><label for="mom">ФИО мамы</label>
-    <input type="text" id="mom" autocomplete="name" placeholder="Иванова Мария Ивановна">
-    <div class="hint">Полностью, в таком порядке: Фамилия, Имя, Отчество</div>
+  <div class="reserve" id="reserveBanner">Мест больше нет, но можно записаться <b>в резерв</b>. Если место освободится — мы обязательно вам сообщим.</div>
+
+  <div class="f" data-f="fio"><label for="fio">ФИО участника</label>
+    <input type="text" id="fio" autocomplete="name" placeholder="Иванова Мария Ивановна">
+    <div class="hint">Полностью, в таком порядке: Фамилия, Имя, Отчество. Один участник — одна форма.</div>
     <div class="err">Укажите фамилию, имя и отчество полностью, через пробел</div></div>
 
-  <div class="f" data-f="child"><label for="child">ФИО ребёнка</label>
-    <input type="text" id="child" placeholder="Иванов Артём Сергеевич">
-    <div class="err">Укажите фамилию и имя ребёнка (отчество, если есть)</div></div>
+  <fieldset data-f="rod"><legend>Кем приходится ребёнку с инвалидностью</legend>
+    <label class="opt"><input type="radio" name="rod" value="Мама"> Мама</label>
+    <label class="opt"><input type="radio" name="rod" value="Папа"> Папа</label>
+    <label class="opt"><input type="radio" name="rod" value="Брат"> Брат</label>
+    <label class="opt"><input type="radio" name="rod" value="Сестра"> Сестра</label>
+    <label class="opt"><input type="radio" name="rod" value="Другое"> Другое</label>
+    <div class="sub" id="rodSub"><input type="text" id="rodOther" placeholder="Уточните (например: бабушка, сам ребёнок)" aria-label="Родство — другое"></div>
+    <div class="err">Выберите вариант (для «Другое» — заполните уточнение)</div></fieldset>
 
-  <div class="f" data-f="age"><label for="age">Возраст ребёнка</label>
-    <input type="number" id="age" inputmode="numeric" min="0" max="30" step="1" placeholder="Полных лет">
-    <div class="err">Укажите возраст числом от 0 до 30</div></div>
+  <div class="f" data-f="age"><label for="age">Возраст</label>
+    <input type="number" id="age" inputmode="numeric" min="0" max="100" step="1" placeholder="Полных лет">
+    <div class="err">Укажите возраст числом от 0 до 100</div></div>
 
-  <fieldset data-f="suz"><legend>СУЗ</legend>
-    <label class="opt"><input type="radio" name="suz" value="СУЗ 1"> СУЗ 1</label>
-    <label class="opt"><input type="radio" name="suz" value="СУЗ 2"> СУЗ 2</label>
-    <label class="opt"><input type="radio" name="suz" value="СУЗ 3"> СУЗ 3</label>
-    <label class="opt"><input type="radio" name="suz" value="СУЗ 4"> СУЗ 4</label>
-    <label class="opt"><input type="radio" name="suz" value="Другое"> Другое</label>
-    <div class="sub" id="suzSub"><input type="text" id="suzOther" placeholder="Уточните" aria-label="СУЗ — другое"></div>
-    <div class="err">Выберите вариант и заполните уточнение</div></fieldset>
-
-  <div class="f" data-f="diag"><label for="diag">Диагноз</label>
-    <textarea id="diag" placeholder="Укажите диагноз ребёнка"></textarea>
-    <div class="err">Укажите диагноз</div></div>
-
-  <fieldset data-f="vol"><legend>Волонтёр</legend>
-    <label class="opt"><input type="radio" name="vol" value="Валентина"> Валентина</label>
-    <label class="opt"><input type="radio" name="vol" value="Оксана"> Оксана</label>
-    <label class="opt"><input type="radio" name="vol" value="Вероника"> Вероника</label>
-    <div class="err">Выберите волонтёра</div></fieldset>
+  <fieldset data-f="diagyn"><legend>Диагноз</legend>
+    <label class="opt"><input type="radio" name="diagyn" value="Есть"> Есть</label>
+    <label class="opt"><input type="radio" name="diagyn" value="Нет"> Нет</label>
+    <div class="err">Выберите «Есть» или «Нет»</div>
+    <div class="sub" id="diagBlock">
+      <div class="f" data-f="diag"><label for="diag">Укажите диагноз</label>
+        <textarea id="diag" placeholder="Напишите диагноз"></textarea>
+        <div class="err">Укажите диагноз</div></div>
+      <fieldset data-f="suz"><legend>СУЗ</legend>
+        <label class="opt"><input type="radio" name="suz" value="СУЗ 1"> СУЗ 1</label>
+        <label class="opt"><input type="radio" name="suz" value="СУЗ 2"> СУЗ 2</label>
+        <label class="opt"><input type="radio" name="suz" value="СУЗ 3"> СУЗ 3</label>
+        <label class="opt"><input type="radio" name="suz" value="СУЗ 4"> СУЗ 4</label>
+        <div class="err">Выберите СУЗ</div></fieldset>
+    </div>
+  </fieldset>
 
   <div class="notes">
-    <h3>Важно</h3>
+    <h3>Важно!</h3>
     <ul>
-      <li><b>С собой нужна сменная обувь!</b></li>
-      <li>После мероприятия просим выложить в Instagram фото и отзыв с отметкой <a href="https://www.instagram.com/igrai.park/" target="_blank" rel="noopener">@igrai.park</a>.</li>
+      <li><b>ОБЯЗАТЕЛЬНО возьмите с собой сменную обувь!</b></li>
     </ul>
   </div>
 
+  <!-- Скрытое поле-ловушка для спам-ботов. Не трогать и не переименовывать. -->
   <input class="hp" type="text" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">
 
   <div class="f" data-f="ok"><label class="opt consent"><input type="checkbox" id="ok"> Даю согласие на обработку моих персональных данных и данных моего ребёнка для организации мероприятия</label>
@@ -121,40 +133,105 @@ button:disabled{opacity:.6;cursor:wait}
 
 <section class="done" id="done" role="status" aria-live="polite">
   <h2>Спасибо, заявка принята!</h2>
-  <p>Ждём вас <b>23 октября в 15:00</b> в «ИграйПарк» (ул. Свердлова, 11).</p>
+  <p id="doneText"></p>
   <p><b>Не забудьте сменную обувь!</b></p>
+  <button type="button" id="again">Заполнить ещё на одного участника</button>
 </section>
 </main>
 
 <script>
-// Сюда вставьте ссылку на веб-приложение Google (она заканчивается на /exec)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyuTBUWKkOY_WVbLX9pOFeWsYHd0zHHsaXgh7HNdYTzgWO8XEe1W11cejtzftzAhxNi/exec";
+/* ================================================================
+   НАСТРОЙКИ ФОРМЫ
+   ================================================================ */
+const CONFIG = {
+  // Ссылка универсального веб-приложения Google (одна на все формы,
+  // получается один раз по инструкции SETUP.md; заканчивается на /exec)
+  scriptUrl: 'https://script.google.com/macros/s/AKfycbxQQN_-asVqkxfXqmpd175V8AfJOPmchUyb8FDv0gxyfCCGBSau5V9nQRWwEa3FFXPeQg/exec',
 
-const ORGANIZER = "ИграйПарк, ул. Свердлова, 11";
-const EVENT_TIME = "23.10.2026 15:00-17:00";
+  // Вкладка в Google-таблице для заявок этой формы (создаётся автоматически)
+  sheetName: 'Кухня-квартирник — 06.11.2026',
+
+  // Всего мест вместе с сопровождающими
+  seats: 15,
+
+  eventPlace: 'ресурсный центр СШ № 204, г. Минск, ул. Я. Чечота, 18',
+  eventDate: '06.11.2026, 14:30–17:30'
+};
+
+/* Колонки таблицы («Дата отправки» и «Статус» скрипт добавит сам) */
+const COLUMNS = ['ФИО участника','Кем приходится ребёнку','Возраст','Есть ли диагноз','Диагноз','СУЗ','Место','Дата мероприятия'];
+
+/* Тексты экрана «Спасибо» */
+const DONE_OK      = 'Вы зарегистрированы! Ждём вас 6 ноября в 14:30 в ресурсном центре СШ № 204 (г. Минск, ул. Я. Чечота, 18).';
+const DONE_RESERVE = 'Все места заняты — вы записаны в РЕЗЕРВ. Если место освободится, мы обязательно с вами свяжемся.';
+const DONE_UNKNOWN = 'Ваша заявка принята. Ждём вас 6 ноября в 14:30 в ресурсном центре СШ № 204 (г. Минск, ул. Я. Чечота, 18).';
+
+/* ================================================================ */
 
 const $ = id => document.getElementById(id);
 const radio = n => (document.querySelector('input[name="'+n+'"]:checked')||{}).value;
 const mark = (k, bad) => document.querySelector('[data-f="'+k+'"]').classList.toggle('bad', bad);
 const words = s => s.trim().split(/\s+/).filter(Boolean);
-const nameOk = s => /^[\p{L}\-'’.\s]+$/u.test(s);
+const nameOk = s => /^[\p{L}\-'’.\s№]+$/u.test(s);
 
+/* --- счётчик мест (JSONP-запрос к веб-приложению Google) --- */
+let counterOk = false;   // удалось ли узнать число занятых мест
+let seatsFull = false;   // мест нет → режим резерва
+
+function jsonp(url, timeout) {
+  return new Promise((resolve, reject) => {
+    const cb = '__jp' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, timeout || 10000);
+    function cleanup() { clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = d => { cleanup(); resolve(d); };
+    s.onerror = () => { cleanup(); reject(new Error('network')); };
+    s.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + cb;
+    document.head.appendChild(s);
+  });
+}
+
+async function loadCounter() {
+  try {
+    const url = CONFIG.scriptUrl + '?action=count&sheet=' + encodeURIComponent(CONFIG.sheetName) + '&_ts=' + Date.now();
+    const d = await jsonp(url);
+    const left = Math.max(0, CONFIG.seats - (Number(d && d.taken) || 0));
+    counterOk = true;
+    seatsFull = left <= 0;
+    $('seatsLeft').textContent = left;
+    $('seatsBox').style.display = 'block';
+  } catch (err) {
+    // Счётчик недоступен — форма всё равно работает, лимит проверит сервер
+    counterOk = false;
+    $('seatsBox').style.display = 'none';
+  }
+  $('reserveBanner').style.display = seatsFull ? 'block' : 'none';
+  $('send').textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
+}
+loadCounter();
+
+/* --- показ дополнительных блоков --- */
 document.addEventListener('change', () => {
-  $('suzSub').classList.toggle('on', radio('suz') === 'Другое');
+  $('rodSub').classList.toggle('on', radio('rod') === 'Другое');
+  $('diagBlock').classList.toggle('on', radio('diagyn') === 'Есть');
 });
 
+/* --- отправка --- */
 $('form').addEventListener('submit', async e => {
   e.preventDefault();
-  const mom = $('mom').value.trim(), child = $('child').value.trim(), diag = $('diag').value.trim();
-  const age = $('age').value.trim(), suz = radio('suz'), suzOther = $('suzOther').value.trim();
-  const ageNum = Number(age);
+  const fio = $('fio').value.trim();
+  const age = $('age').value.trim(), ageNum = Number(age);
+  const rod = radio('rod'), rodOther = $('rodOther').value.trim();
+  const diagyn = radio('diagyn');
+  const diag = $('diag').value.trim(), suz = radio('suz');
+
   const checks = {
-    mom: words(mom).length >= 3 && nameOk(mom),
-    child: words(child).length >= 2 && nameOk(child),
-    age: age !== '' && Number.isInteger(ageNum) && ageNum >= 0 && ageNum <= 30,
-    suz: !!suz && (suz !== 'Другое' || !!suzOther),
-    diag: diag.length >= 2,
-    vol: !!radio('vol'),
+    fio: words(fio).length >= 3 && nameOk(fio),
+    rod: !!rod && (rod !== 'Другое' || rodOther.length >= 2),
+    age: age !== '' && Number.isInteger(ageNum) && ageNum >= 0 && ageNum <= 100,
+    diagyn: !!diagyn,
+    diag: diagyn !== 'Есть' || diag.length >= 2,
+    suz: diagyn !== 'Есть' || !!suz,
     ok: $('ok').checked
   };
   let first = null;
@@ -162,23 +239,44 @@ $('form').addEventListener('submit', async e => {
   if (first) { document.querySelector('[data-f="'+first+'"]').scrollIntoView({block:'center'}); return; }
 
   const btn = $('send'); btn.disabled = true; btn.textContent = 'Отправляем…'; $('fail').style.display = 'none';
+
+  const diagYes = diagyn === 'Есть';
   const payload = {
-    momFio: mom, childFio: child, age: age,
-    suz: suz === 'Другое' ? 'Другое: ' + suzOther : suz,
-    diagnosis: diag, volunteer: radio('vol'),
-    organizer: ORGANIZER, eventTime: EVENT_TIME,
-    website: $('website').value
+    _sheet: CONFIG.sheetName,
+    _columns: COLUMNS,
+    _seats: CONFIG.seats,
+    'ФИО участника': fio,
+    'Кем приходится ребёнку': rod === 'Другое' ? 'Другое: ' + rodOther : rod,
+    'Возраст': age,
+    'Есть ли диагноз': diagYes ? 'Есть' : 'Нет',
+    'Диагноз': diagYes ? diag : 'нет',
+    'СУЗ': diagYes ? suz : 'нет',
+    'Место': CONFIG.eventPlace,
+    'Дата мероприятия': CONFIG.eventDate,
+    website: $('website').value  // ловушка для ботов — всегда последней
   };
+
+  const wasFull = seatsFull; // помним состояние мест на момент отправки
   try {
-    if (SCRIPT_URL.startsWith('ВСТАВЬТЕ')) throw new Error('Не указана ссылка на скрипт');
-    await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+    if (!/\/exec$/.test(CONFIG.scriptUrl)) throw new Error('Не указана ссылка на веб-приложение');
+    await fetch(CONFIG.scriptUrl, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    $('doneText').textContent = !counterOk ? DONE_UNKNOWN : (wasFull ? DONE_RESERVE : DONE_OK);
     $('form').style.display = 'none'; $('done').style.display = 'block';
     $('done').scrollIntoView({block:'center'});
   } catch (err) {
     console.error(err);
-    $('fail').style.display = 'block'; btn.disabled = false; btn.textContent = 'Отправить заявку';
+    $('fail').style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
   }
 });
+
+/* --- «Заполнить ещё на одного участника» --- */
+$('again').addEventListener('click', () => location.reload());
 </script>
 </body>
 </html>
