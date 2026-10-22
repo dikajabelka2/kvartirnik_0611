@@ -24,6 +24,8 @@ h1{font:700 clamp(30px,6vw,46px)/1.12 "Cormorant Garamond",Georgia,serif;color:v
 .info .date{font:700 28px/1.2 "Cormorant Garamond",Georgia,serif;color:var(--plum);text-align:center;padding-bottom:12px;margin-bottom:2px;border-bottom:1.5px solid var(--gold)}
 .seats{margin-top:12px!important;text-align:center;font-weight:700;color:var(--plum);background:#fff;border:1.5px solid var(--gold);border-radius:999px;padding:8px 16px}
 .seats b{font-size:20px}
+.seats.clickable{cursor:pointer}
+.seats.clickable b{font-size:16px;text-decoration:underline dotted}
 main{max-width:620px;margin:-40px auto 60px;padding:0 16px}
 form{background:#fff;border-radius:22px;padding:30px 24px 26px;box-shadow:0 12px 40px rgba(93,44,112,.14)}
 h2{font:700 26px "Cormorant Garamond",Georgia,serif;color:var(--plum);margin:0 0 20px}
@@ -191,8 +193,10 @@ const words = s => s.trim().split(/\s+/).filter(Boolean);
 const nameOk = s => /^[\p{L}\-'’.\s№]+$/u.test(s);
 
 /* --- счётчик мест (JSONP-запрос к веб-приложению Google) --- */
-let counterOk = false;   // удалось ли узнать число занятых мест
-let seatsFull = false;   // мест нет → режим резерва
+let counterOk = false;    // удалось ли узнать число занятых мест
+let seatsFull = false;    // мест нет → режим резерва
+let counterCycle = 0;     // счётчик циклов (для ручного «обновить»)
+const RETRY_DELAYS = [0, 3000, 6000, 10000, 15000, 20000, 30000, 30000, 30000, 30000];
 
 function jsonp(url, timeout) {
   return new Promise((resolve, reject) => {
@@ -210,26 +214,42 @@ function jsonp(url, timeout) {
   });
 }
 
-async function loadCounter(attempt) {
-  attempt = attempt || 1;
-  $('seatsBox').style.display = 'block';
-  $('seatsTotal').textContent = CONFIG.seats;
-  try {
-    const url = CONFIG.scriptUrl + '?action=count&sheet=' + encodeURIComponent(CONFIG.sheetName) + '&_ts=' + Date.now();
-    const d = await jsonp(url, 20000);
-    const left = Math.max(0, CONFIG.seats - (Number(d && d.taken) || 0));
-    counterOk = true;
-    seatsFull = left <= 0;
-    $('seatsLeft').textContent = left;
-  } catch (err) {
-    // Скрипт Google мог «проснуться» не успеть — пробуем ещё раз (до 3 попыток)
-    if (attempt < 3) { setTimeout(() => loadCounter(attempt + 1), attempt * 3000); return; }
-    counterOk = false;
-    $('seatsBox').style.display = 'none'; // лимит в любом случае проверит сервер
-  }
+function renderSeatsState() {
   $('reserveBanner').style.display = seatsFull ? 'block' : 'none';
   $('send').textContent = seatsFull ? 'Записаться в резерв' : 'Отправить заявку';
 }
+
+async function loadCounter() {
+  const cycle = ++counterCycle;
+  $('seatsBox').style.display = 'block';
+  $('seatsBox').classList.remove('clickable');
+  $('seatsTotal').textContent = CONFIG.seats;
+  $('seatsLeft').textContent = '…';
+  for (let i = 0; i < RETRY_DELAYS.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, RETRY_DELAYS[i]));
+    if (cycle !== counterCycle) return; // запущен новый цикл — выходим
+    try {
+      const url = CONFIG.scriptUrl + '?action=count&sheet=' + encodeURIComponent(CONFIG.sheetName) + '&_ts=' + Date.now();
+      const d = await jsonp(url, 20000);
+      if (cycle !== counterCycle) return;
+      const left = Math.max(0, CONFIG.seats - (Number(d && d.taken) || 0));
+      counterOk = true;
+      seatsFull = left <= 0;
+      $('seatsLeft').textContent = left;
+      renderSeatsState();
+      return;
+    } catch (err) { /* Google иногда отдаёт временную ошибку — пробуем снова */ }
+  }
+  if (cycle !== counterCycle) return;
+  // Все попытки исчерпаны: предлагаем обновить вручную.
+  // Лимит мест в любом случае контролирует сервер при отправке.
+  counterOk = false;
+  $('seatsLeft').textContent = 'обновить ↻';
+  $('seatsBox').classList.add('clickable');
+  $('seatsBox').title = 'Нажмите, чтобы обновить счётчик';
+}
+
+$('seatsBox').addEventListener('click', () => { if (!counterOk) loadCounter(); });
 loadCounter();
 
 /* --- показ дополнительных блоков --- */
